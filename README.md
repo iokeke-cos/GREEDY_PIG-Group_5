@@ -12,9 +12,9 @@ Academic Session 2026/2027 (First Semester) | Group Project
 
 | Name | Matric No. | Responsibility |
 |------|------------|----------------|
-| Basil [Surname] | [Matric No.] | Backend core, Steal on a 6 |
-| Ayanfe [Surname] | [Matric No.] | Live tutorial, UX and responsiveness |
-| Jackie [Surname] | [Matric No.] | Reactions (taunts and cheers), deployment |
+| Basil Daudu | [Matric No.] | Backend core, Steal on a 6 |
+| Ayanfeoluwa Runsewe| [Matric No.] | Live tutorial, UX and responsiveness |
+| Ijeamaka Okeke | 23120112038 | Reactions (taunts and cheers), deployment |
 
 ## About
 

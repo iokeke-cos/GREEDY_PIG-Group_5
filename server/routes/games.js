@@ -236,4 +236,82 @@ router.post("/:id/hold", async (req, res, next) => {
   }
 });
 
+const stealSchema = z.object({
+  playerId: z.string().uuid(),
+  targetPlayerId: z.string().uuid(),
+});
+
+// Steal: after rolling a 6, wipe another player's banked score
+router.post("/:id/steal", async (req, res, next) => {
+  const id = idSchema.safeParse(req.params.id);
+  if (!id.success) return res.status(400).json({ error: "Invalid game id" });
+  const body = stealSchema.safeParse(req.body);
+  if (!body.success) return validationError(res, body.error);
+  const { playerId, targetPlayerId } = body.data;
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const g = await client.query(
+      "select * from games where id = $1 for update",
+      [id.data]
+    );
+    if (g.rows.length === 0) return fail(client, res, 404, "Game not found");
+    const game = g.rows[0];
+    if (game.status !== "active")
+      return fail(client, res, 409, "This game is already finished");
+
+    const p = await client.query(
+      "select * from players where game_id = $1 order by seat for update",
+      [game.id]
+    );
+    const players = p.rows;
+    const current = players[game.current_player_index];
+    if (current.id !== playerId)
+      return fail(client, res, 403, "It is not your turn");
+    if (game.last_roll !== 6)
+      return fail(client, res, 409, "You can only steal right after rolling a 6");
+    if (game.steal_used)
+      return fail(client, res, 409, "You already used the steal for this 6");
+    if (targetPlayerId === playerId)
+      return fail(client, res, 400, "You can't steal from yourself");
+
+    const target = players.find((pl) => pl.id === targetPlayerId);
+    if (!target)
+      return fail(client, res, 404, "Target player not found in this game");
+    if (target.total_points === 0)
+      return fail(client, res, 400, "That player has no points to steal");
+
+    await client.query("update players set total_points = 0 where id = $1", [
+      target.id,
+    ]);
+    await client.query("update games set steal_used = true where id = $1", [
+      game.id,
+    ]);
+
+    const events = [
+      {
+        type: "stolen",
+        from: target.id,
+        to: playerId,
+        lostPoints: target.total_points,
+      },
+    ];
+    for (const e of events) {
+      await client.query(
+        "insert into events (game_id, player_id, type, data) values ($1, $2, $3, $4)",
+        [game.id, playerId, e.type, JSON.stringify(e)]
+      );
+    }
+    await client.query("COMMIT");
+
+    const state = await getGameState(pool, game.id);
+    res.json({ events, game: state });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    next(err);
+  } finally {
+    client.release();
+  }
+});
 module.exports = router;

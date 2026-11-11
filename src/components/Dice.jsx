@@ -4,10 +4,12 @@ import diceRollSound from "src/sound_effect/dice_roll.mp3";
 import useAudio from "src/hooks/useAudio";
 
 export function Dice({
-  getFinalDiceValue,
+ getFinalDiceValue,
   setIsRolling,
   isRolling,
   setChangeBackground,
+  requestRoll,
+  disabled,
 }) {
   const { preloadSrcList } = useGreedyPigContext();
   const [currentDice, setCurrentDice] = useState(0);
@@ -19,11 +21,14 @@ export function Dice({
     setChangeBackground(true);
   };
 
-  useEffect(() => {
+    useEffect(() => {
     if (isRolling) {
       let endRoll = 0;
       let interval, diceValue;
-      interval = setInterval(() => {
+      // ask the server for the real number while the dice animation plays
+      const rollPromise = requestRoll ? requestRoll() : null;
+
+      interval = setInterval(async () => {
         if (endRoll < 30) {
           diceRollAudio?.play();
           diceValue = Math.floor(Math.random() * 6);
@@ -31,7 +36,21 @@ export function Dice({
           endRoll++;
         } else {
           clearInterval(interval);
-          getFinalDiceValue(diceValue + 1);
+          let finalValue = diceValue + 1;
+
+          if (rollPromise) {
+            const serverValue = await rollPromise;
+            if (serverValue === null) {
+              // the request failed; the error message is shown by the page
+              setIsRolling(false);
+              setChangeBackground(false);
+              return;
+            }
+            finalValue = serverValue;
+            setCurrentDice(serverValue - 1);
+          }
+
+          getFinalDiceValue(finalValue);
           setIsRolling(false);
           setChangeBackground(false);
         }
@@ -44,7 +63,7 @@ export function Dice({
       <button
         className={`hover:scale-105 active:scale-100 duration-300 md:w-auto w-[200px]`}
         onClick={handleDiceClick}
-        disabled={isRolling}
+        disabled={isRolling || disabled}
       >
         {die.map((dice, index) => (
           <img

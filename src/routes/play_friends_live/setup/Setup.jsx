@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Navbar from "src/components/Navbar";
 import { useLiveGameContext } from "src/context/useLiveGameContext";
 import AddPlayerButton from "./components/AddPlayerButton";
@@ -10,7 +11,7 @@ import { useGreedyPigContext } from "src/context/useGreedyPigContext";
 
 function LiveGameSetup() {
   const {
-    playerData,
+   playerData,
     maxPoints,
     setMaxPoints,
     setPlayerData,
@@ -18,22 +19,35 @@ function LiveGameSetup() {
     setIsGameOver,
     setCurrentPlayer,
     isContinue,
+    startServerGame,
+    apiError,
+    setApiError,
+    gameId,
+    serverPlayerIds,
   } = useLiveGameContext();
   const navigate = useNavigate();
+    const [isStarting, setIsStarting] = useState(false);
   const { preloadSrcList, pigPetNames } = useGreedyPigContext();
   const pigs = preloadSrcList.filter((pig) => pig.includes("pig"));
 
-  function setupPlayers(resume) {
-    if (!resume) {
-      let newPlayerData = playerData.map((player) => {
-        let newPlayer = {
-          ...player,
-          running_points: 0,
-          total_points: 0,
-        };
-        return newPlayer;
-      });
+    async function setupPlayers(resume) {
+    if (isStarting) return;
+    setApiError("");
 
+    const canResume =
+      resume && gameId && serverPlayerIds.length === playerData.length;
+
+    if (!canResume) {
+      setIsStarting(true);
+      const game = await startServerGame();
+      setIsStarting(false);
+      if (!game) return; // the error message is shown on screen
+
+      const newPlayerData = playerData.map((player) => ({
+        ...player,
+        running_points: 0,
+        total_points: 0,
+      }));
       setDiceValue(0);
       setIsGameOver(false);
       setCurrentPlayer(0);
@@ -109,8 +123,21 @@ function LiveGameSetup() {
               >
                 Start Game
               </button>
-            )}
+                        )}
           </section>
+          {isStarting && (
+            <p role="status" className="text-white/80">
+              Starting your game…
+            </p>
+          )}
+          {apiError && (
+            <p
+              role="alert"
+              className="text-center bg-[#D30C0C30] border border-[#D30C0C80] rounded px-4 py-2"
+            >
+              {apiError}
+            </p>
+          )}
         </div>
       </main>
     </>

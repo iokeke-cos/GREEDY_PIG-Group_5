@@ -105,12 +105,14 @@ function LiveGameSetup() {
               <>
                 <button
                   onClick={() => {setupPlayers(false)}}
+                  disabled={isStarting}
                   className="w-full md:w-fit sec-font text-xl rounded px-16 py-4 bg-[#D30CBD] font-bold  duration-500 skew-x-6 hover:skew-x-0 hover:scale-95 hover:bg-[#d30cbc] "
                 >
                   Start New Game
                 </button>
                 <button
                   onClick={() => {setupPlayers(true)}}
+                  disabled={isStarting}
                   className="w-full md:w-fit sec-font text-xl rounded px-16 py-4 bg-[#D30CBD] font-bold  duration-500 -skew-x-6 hover:skew-x-0 hover:scale-95 hover:bg-[#d30cbc] "
                 >
                   Resume Game
@@ -119,6 +121,7 @@ function LiveGameSetup() {
             ) : (
               <button
                 onClick={() => {setupPlayers(false)}}
+                disabled={isStarting}
                 className=" sec-font text-xl rounded px-16 py-4 bg-[#D30CBD] font-bold  duration-500 skew-x-6 hover:skew-x-0 hover:scale-95 hover:bg-[#d30cbc] "
               >
                 Start Game

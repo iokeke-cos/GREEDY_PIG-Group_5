@@ -23,19 +23,33 @@ function LiveGamePage() {
   const [latestEvents, setLatestEvents] = useState([]);
   const [apiError, setApiError] = useState("");
 
-  async function startServerGame() {
+  const [serverSlow, setServerSlow] = useState(false);
+
+  async function withSlowNotice(makeRequest) {
+    const timer = setTimeout(() => setServerSlow(true), 4000);
+    try {
+      return await makeRequest();
+    } finally {
+      clearTimeout(timer);
+      setServerSlow(false);
+    }
+  }
+
+    async function startServerGame() {
     try {
       setApiError("");
-      const data = await apiFetch("/api/games", {
-        method: "POST",
-        body: JSON.stringify({
-          maxPoints: Number(maxPoints),
-          players: playerData.map((p) => ({
-            name: p.name,
-            pigIndex: Math.min(28, Math.max(0, Number(p.pig_index) || 0)),
-          })),
-        }),
-      });
+      const data = await withSlowNotice(() =>
+        apiFetch("/api/games", {
+          method: "POST",
+          body: JSON.stringify({
+            maxPoints: Number(maxPoints),
+            players: playerData.map((p) => ({
+              name: p.name,
+              pigIndex: Math.min(28, Math.max(0, Number(p.pig_index) || 0)),
+            })),
+          }),
+        })
+      );
       setGameId(data.game.id);
       setServerPlayerIds(data.game.players.map((p) => p.id));
       setCanSteal(false);
@@ -54,13 +68,15 @@ function LiveGamePage() {
     }
     try {
       setApiError("");
-      return await apiFetch(`/api/games/${gameId}/${action}`, {
-        method: "POST",
-        body: JSON.stringify({
-          playerId: serverPlayerIds[currentPlayer],
-          ...extraBody,
-        }),
-      });
+      return await withSlowNotice(() =>
+        apiFetch(`/api/games/${gameId}/${action}`, {
+          method: "POST",
+          body: JSON.stringify({
+            playerId: serverPlayerIds[currentPlayer],
+            ...extraBody,
+          }),
+        })
+      );
     } catch (err) {
       setApiError(err.message);
       return null;
@@ -98,6 +114,15 @@ function LiveGamePage() {
         <div className={`${
             changeBackground ? "bg-[#056FA4] blur-[200px] md:blur-[300px] " : diceValue === 1 ? "bg-[#D30C0C] blur-[500px] md:blur-[800px] " : "bg-[#D30CBD] blur-[500px] md:blur-[800px]"
           } rounded-full w-[800px] h-[800px]  -z-10 fixed -top-[700px] -right-[700px] md:-top-96 md:-right-96`}></div>
+                {serverSlow && (
+          <div
+            role="status"
+            className="fixed top-0 inset-x-0 z-50 bg-[#056FA4] text-white text-center text-sm py-2 px-4"
+          >
+            Waking up the game server… the first move can take up to a minute.
+            Please wait.
+          </div>
+        )}
         <LiveGameContext.Provider
           value={{
             playerData,

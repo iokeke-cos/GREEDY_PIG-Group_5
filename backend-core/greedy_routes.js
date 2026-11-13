@@ -1,4 +1,5 @@
-const router = XPathExpression.Router();
+const express = require('express');
+const router = express.Router();
 
 const {
     createGame,
@@ -29,11 +30,11 @@ router.post('/games/:gameId/steal', stealPlayerScore);
 //Get a taunt/cheer message
 router.get('/messages',getMessage);
 
-//Redad tutorial completion status
+//Read tutorial completion status
 router.get('/players/:playerId/tutorial', getTutorial);
 
 //Save tutorial completion status
-router.post('/players/playerId/tutorial', saveTutorial);
+router.post('/players/:playerId/tutorial', saveTutorial);
 
 module.exports = router;
 

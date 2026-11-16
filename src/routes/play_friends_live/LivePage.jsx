@@ -17,10 +17,12 @@ function LiveGamePage() {
   const [isRunning, setIsRunning] = useState("?"); //if the state of the game was still in the running points
   const [diceValue, setDiceValue] = useState(0);
   const [currentPlayer, setCurrentPlayer] = useState(0);
-    const [gameId, setGameId] = useState(null);
+  const [gameId, setGameId] = useState(null);
   const [serverPlayerIds, setServerPlayerIds] = useState([]);
   const [canSteal, setCanSteal] = useState(false);
   const [latestEvents, setLatestEvents] = useState([]);
+  const [unlockedAchievements, setUnlockedAchievements] = useState([]);
+  const [achievementCollection, setAchievementCollection] = useState([]);
   const [apiError, setApiError] = useState("");
 
   const [serverSlow, setServerSlow] = useState(false);
@@ -34,6 +36,20 @@ function LiveGamePage() {
       setServerSlow(false);
     }
   }
+
+
+
+  async function fetchAchievementCollection(id = gameId) {
+    if (!id) return;
+
+    try {
+      const data = await apiFetch(`/api/games/${id}/achievements`);
+      setAchievementCollection(data.achievements || []);
+    } catch (err) {
+      console.error("Failed to load achievements:", err);
+    }
+  }
+
 
     async function startServerGame() {
     try {
@@ -52,6 +68,7 @@ function LiveGamePage() {
       );
       setGameId(data.game.id);
       setServerPlayerIds(data.game.players.map((p) => p.id));
+      await fetchAchievementCollection(data.game.id);
       setCanSteal(false);
       setLatestEvents([]);
       return data.game;
@@ -101,6 +118,7 @@ function LiveGamePage() {
       game.status === "active" && game.lastRoll === 6 && !game.stealUsed
     );
     setLatestEvents(data.events || []);
+    setUnlockedAchievements(data.unlockedAchievements || []);
   }
   
   return (
@@ -150,6 +168,10 @@ function LiveGamePage() {
             canSteal,
             setCanSteal,
             latestEvents,
+            unlockedAchievements,
+            achievementCollection,
+            fetchAchievementCollection,
+            setUnlockedAchievements,
             apiError,
             setApiError,
             startServerGame,

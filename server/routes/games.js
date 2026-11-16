@@ -6,6 +6,56 @@ const crypto = require("crypto");
 
 const router = express.Router();
 
+const ACHIEVEMENTS = {
+  first_steps: {
+    name: "First Steps",
+    description: "Roll the dice for the first time.",
+  },
+  lucky_six: {
+    name: "Lucky Six",
+    description: "Roll a six.",
+  },
+  smart_saver: {
+    name: "Smart Saver",
+    description: "Bank at least 10 points in one turn.",
+  },
+  score_snatcher: {
+    name: "Score Snatcher",
+    description: "Successfully steal points from another player.",
+  },
+  champion: {
+    name: "Champion",
+    description: "Win a game.",
+  },
+};
+
+async function unlockAchievements(client, playerId, achievementKeys) {
+  const unlocked = [];
+
+  for (const key of achievementKeys) {
+    const achievement = ACHIEVEMENTS[key];
+    if (!achievement) continue;
+
+    const result = await client.query(
+      `INSERT INTO player_achievements (player_id, achievement_key)
+       VALUES ($1, $2)
+       ON CONFLICT (player_id, achievement_key) DO NOTHING
+       RETURNING achievement_key, unlocked_at`,
+      [playerId, key]
+    );
+
+    if (result.rows.length > 0) {
+      unlocked.push({
+        key,
+        ...achievement,
+        unlockedAt: result.rows[0].unlocked_at,
+      });
+    }
+  }
+
+  return unlocked;
+}
+
 const createGameSchema = z.object({
   maxPoints: z.number().int().min(10).max(1000).default(100),
   players: z
@@ -83,6 +133,69 @@ router.get("/:id", async (req, res, next) => {
     next(err);
   }
 });
+
+router.get("/:id/achievements", async (req, res, next) => {
+  const id = idSchema.safeParse(req.params.id);
+
+  if (!id.success) {
+    return res.status(400).json({ error: "Invalid game id" });
+  }
+
+  try {
+    const game = await pool.query(
+      "SELECT id FROM games WHERE id = $1",
+      [id.data]
+    );
+
+    if (game.rows.length === 0) {
+      return res.status(404).json({ error: "Game not found" });
+    }
+
+    const result = await pool.query(
+      `SELECT
+         p.id AS player_id,
+         p.name AS player_name,
+         a.achievement_key AS key,
+         a.name,
+         a.description,
+         pa.unlocked_at
+       FROM players p
+       CROSS JOIN achievements a
+       LEFT JOIN player_achievements pa
+         ON pa.player_id = p.id
+         AND pa.achievement_key = a.achievement_key
+       WHERE p.game_id = $1
+       ORDER BY p.id, a.achievement_key`,
+      [id.data]
+    );
+
+    const achievements = {};
+
+    for (const row of result.rows) {
+      if (!achievements[row.player_id]) {
+        achievements[row.player_id] = {
+          playerId: row.player_id,
+          playerName: row.player_name,
+          achievements: [],
+        };
+      }
+
+      achievements[row.player_id].achievements.push({
+        key: row.key,
+        name: row.name,
+        description: row.description,
+        unlocked: row.unlocked_at !== null,
+        unlockedAt: row.unlocked_at,
+      });
+    }
+
+    res.json({ achievements: Object.values(achievements) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+
 const rollSchema = z.object({ playerId: z.string().uuid() });
 
 async function fail(client, res, status, message) {
@@ -164,10 +277,27 @@ router.post("/:id/roll", async (req, res, next) => {
         [game.id, playerId, e.type, JSON.stringify(e)]
       );
     }
+
+
+    const achievementKeys = ["first_steps"];
+
+    if (value === 6) {
+      achievementKeys.push("lucky_six");
+    }
+
+    if (status === "finished" && winnerId === playerId) {
+      achievementKeys.push("champion");
+    }
+
+    const unlockedAchievements = await unlockAchievements(
+      client,
+      playerId,
+      achievementKeys
+    );
     await client.query("COMMIT");
 
     const state = await getGameState(pool, game.id);
-    res.json({ roll: value, events, game: state });
+    res.json({ roll: value, events, game: state, unlockedAchievements });
   } catch (err) {
     await client.query("ROLLBACK");
     next(err);
@@ -224,10 +354,21 @@ router.post("/:id/hold", async (req, res, next) => {
         [game.id, playerId, e.type, JSON.stringify(e)]
       );
     }
+
+    let unlockedAchievements = [];
+
+    if (banked >= 10) {
+      unlockedAchievements = await unlockAchievements(
+        client,
+        playerId,
+        ["smart_saver"]
+      );
+    }
+    
     await client.query("COMMIT");
 
     const state = await getGameState(pool, game.id);
-    res.json({ events, game: state });
+    res.json({ events, game: state, unlockedAchievements });
   } catch (err) {
     await client.query("ROLLBACK");
     next(err);
@@ -303,10 +444,17 @@ router.post("/:id/steal", async (req, res, next) => {
         [game.id, playerId, e.type, JSON.stringify(e)]
       );
     }
+
+    const unlockedAchievements = await unlockAchievements(
+      client,
+      playerId,
+      ["score_snatcher"]
+    );
+    
     await client.query("COMMIT");
 
     const state = await getGameState(pool, game.id);
-    res.json({ events, game: state });
+    res.json({ events, game: state, unlockedAchievements });
   } catch (err) {
     await client.query("ROLLBACK");
     next(err);

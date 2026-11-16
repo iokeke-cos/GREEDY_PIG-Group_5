@@ -31,3 +31,34 @@ CREATE TABLE IF NOT EXISTS events (
 
 CREATE INDEX IF NOT EXISTS idx_players_game ON players(game_id);
 CREATE INDEX IF NOT EXISTS idx_events_game ON events(game_id);
+
+
+
+-- Achievement definitions
+CREATE TABLE IF NOT EXISTS achievements (
+  achievement_key TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL
+);
+
+-- Achievements unlocked by individual players
+CREATE TABLE IF NOT EXISTS player_achievements (
+  id BIGSERIAL PRIMARY KEY,
+  player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  achievement_key TEXT NOT NULL REFERENCES achievements(achievement_key),
+  unlocked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (player_id, achievement_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_player_achievements_player
+ON player_achievements(player_id);
+
+-- Insert the five achievement definitions
+INSERT INTO achievements (achievement_key, name, description)
+VALUES
+  ('first_steps', 'First Steps', 'Roll the dice for the first time.'),
+  ('lucky_six', 'Lucky Six', 'Roll a six.'),
+  ('smart_saver', 'Smart Saver', 'Bank at least 10 points in one turn.'),
+  ('score_snatcher', 'Score Snatcher', 'Successfully steal points from another player.'),
+  ('champion', 'Champion', 'Win a game.')
+ON CONFLICT (achievement_key) DO NOTHING;

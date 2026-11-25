@@ -9,11 +9,13 @@ import StatsSectionMobile from "./components/StatsSectionMobile";
 import CurrentPlayerMobile from "./components/CurrentPlayerMobile";
 import DiceSectionMobile from "./components/DiceSectionMobile";
 import AchievementsPanel from "./components/achievements/AchievementsPanel";
+import TheLiveTutorial from "src/components/TheLiveTutorial";
 
 export default function LiveGame() {
 const {playerData,currentPlayer,isGameOver,setIsContinue,unlockedAchievements,gameId,serverPlayerIds,} = useLiveGameContext();
 
 const [showAchievements, setShowAchievements] = useState([]);
+const [showTutorial, setShowTutorial] = useState(false);
 
   useEffect(() => {
     setIsContinue(true)
@@ -33,6 +35,18 @@ const [showAchievements, setShowAchievements] = useState([]);
 
   return (
     <div className="md:grid md:grid-cols-[minmax(auto,_200px)_1fr_minmax(auto,_200px)] lg:grid-cols-[minmax(auto,_250px)_1fr_minmax(auto,_250px)] xl:grid-cols-[auto_1fr_minmax(auto,_300px)] relative">
+      <button
+          type="button"
+          onClick={() => setShowTutorial(true)}
+          className="hidden md:block fixed bottom-5 right-5 z-[110] bg-[#056FA4] text-white px-5 py-3 rounded-lg font-semibold shadow-lg hover:bg-[#045780]"
+        >
+          How to Play?
+        </button>
+
+        <TheLiveTutorial
+          showTutorial={showTutorial}
+          setShowTutorial={setShowTutorial}
+        />
 
       {showAchievements.length > 0 && (
         <div className="fixed top-5 right-5 z-[100] space-y-3">

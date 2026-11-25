@@ -80,27 +80,25 @@ function DiceSection() {
 
   return (
     <div className="h-screen border-r-[#ffffff40] border-r hidden md:flex flex-col items-center justify-around p-8 sticky top-0 bg-[#00000010] ">
-      <Dice
-        getFinalDiceValue={handleFinalDiceValue}
-        requestRoll={requestRoll}
-        disabled={isPassing}
-        setIsRolling={setIsRolling}
-        isRolling={isRolling}
-        setChangeBackground={setChangeBackground}
-
-        // setCurrentPlayer={setCurrentPlayer}
-        // currentPlayer={currentPlayer}
-        // playerData={playerData}
-        // setPlayerData={setPlayerData}
-        // maxPoints={maxPoints}
-        // setIsGameOver={setIsGameOver}
-      />
+      <div id="tutorial-dice" className="w-full flex justify-center">
+        <Dice
+          getFinalDiceValue={handleFinalDiceValue}
+          requestRoll={requestRoll}
+          disabled={isPassing}
+          setIsRolling={setIsRolling}
+          isRolling={isRolling}
+          setChangeBackground={setChangeBackground}
+        />
+      </div>
+        
+        
             {canSteal && !isRolling && stealTargets.length > 0 && (
         <div
-          className="w-full flex flex-col gap-2"
-          role="group"
-          aria-label="Steal points"
-        >
+            id="tutorial-steal"
+            className="w-full flex flex-col gap-2"
+            role="group"
+            aria-label="Steal points"
+         >
           <p className="text-white text-center text-sm lg:text-base">
             You rolled a 6! Steal from:
           </p>
@@ -125,6 +123,7 @@ function DiceSection() {
         </p>
       )}
       <a
+        id="tutorial-pass"      
         href={"#" + (currentPlayer % playerData.length)}
         className="bg-[#056FA4c0] w-full  text-white text-center text-base lg:text-xl xl:text-2xl font-semibold py-2 lg:py-4 rounded-lg border hover:scale-105 active:scale-100 duration-300"
         onClick={handlePassClick}
